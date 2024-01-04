@@ -1,0 +1,1129 @@
+import pygame
+import random
+pygame.init()
+
+width = 1280
+height = 1020
+fps = 60
+
+pygame.mixer.init()
+screen = pygame.display.set_mode((width, height))
+pygame.display.set_caption('images\Shashechki')
+clock = pygame.time.Clock()
+
+background_image = pygame.image.load(r'images\back.png')
+
+white_win = pygame.image.load('images\white_win.png')
+black_win = pygame.image.load(r'images\black_win.png')
+
+game_board_image = pygame.image.load('images\game_board.png')
+white_checker_image = pygame.image.load('images\white.png')
+black_checker_image = pygame.image.load(r'images\black.png')
+
+game_button = pygame.Rect(452.5,410,375,200)
+
+exit_button_rect = pygame.Rect(1180,0, 100, 50)
+exit_button_text = pygame.font.SysFont(None, 30).render("Выход",
+                                                        True, (255, 255, 255))
+
+cancel_rect = pygame.Rect(1180,0, 100, 50)
+cancel_text = pygame.font.SysFont(None, 25).render("отмена",
+                                                        True, (255, 255, 255))
+
+current_screen = 'main'
+selected_checker = None
+class Checkers:
+    #row - ряд второе число в рект
+    #col - столбец первое число в рект
+    def __init__(self,color,row,col):
+        self.color = color
+        self.row = row
+        self.col = col
+        self.white_king = False
+        self.black_king = False
+        self.track = None
+        row_1 = 450
+        col_1 = 827
+        self.direction = 1 if color == 'white' else -1  # Устанавливаем направление вниз для белых и вверх для чёрных
+        self.in_combat = False
+
+    def capture(self, captured_checker):
+        # Remove the captured checker from the list of checkers
+        checkers.remove(captured_checker)
+
+    def is_valid_move(self, new_row, new_col, all_checkers):
+        for checker in all_checkers:
+            if checker != self:
+                if checker != self.white_king or self.black_king:
+                    if checker.row == new_row and checker.col == new_col:
+                        return False  # На клетке уже есть другая шашка
+            if self.white_king or self.black_king:
+                # Проверяем, что дамка двигается наискось
+                if abs(new_row - self.row) == abs(new_col - self.col):
+                    # Проверяем, что на пути дамки нет других шашек
+                    row_step = 1 if new_row > self.row else -1
+                    col_step = 1 if new_col > self.col else -1
+                    row, col = self.row, self.col
+                    while row != new_row and col != new_col:
+                        row += row_step
+                        col += col_step
+                        if any(c.row == row and c.col == col for c in all_checkers):
+                            return False  # На пути дамки есть другая шашка
+        return True
+    def black_checker_list(self):
+        black_checkers_list = []
+        for checker in checkers:
+            if checker.color == 'black':
+                black_checkers_list.append(checker)
+            else:
+                continue
+        return black_checkers_list
+    def make_all_king(self):
+        black_list = self.black_checker_list()
+        for checker in black_list:
+            checker.black_king = True
+
+    def can_any_black_capture(self, checkers):
+        for black_checker in checkers:
+            if black_checker.color == 'black':
+                for white_checker in checkers:
+                    if white_checker.color == 'white':
+                        if black_checker.black_king == True:
+                            directions = [(1, -1), (1, 1), (-1, -1), (-1, 1)]  # Все возможные направления для дамки
+                            for direction in directions:
+                                current_row, current_col = black_checker.row, black_checker.col
+                                enemy_found = False
+                                other_black_checker_on_path = False
+                                while True:
+                                    new_row = current_row + direction[0]
+                                    new_col = current_col + direction[1]
+                                    if 1 <= new_row <= 8 and 1 <= new_col <= 8:
+                                        for checker in checkers:
+                                            if checker.row == new_row and checker.col == new_col:
+                                                if checker.color == black_checker.color:
+                                                    other_black_checker_on_path = True
+                                                    break  # Шашка того же цвета, учтено наличие другой черной шашки, прерываем цикл
+                                                else:
+                                                    behind_row = new_row + direction[0]
+                                                    behind_col = new_col + direction[1]
+                                                    if 1 <= behind_row <= 8 and 1 <= behind_col <= 8:
+                                                        behind_checker = None
+                                                        for c in checkers:
+                                                            if c.row == behind_row and c.col == behind_col:
+                                                                behind_checker = c
+                                                                break
+                                                        if behind_checker is None and white_checker.row not in [1,
+                                                                                                                8] and white_checker.col not in [
+                                                            1, 8]:
+                                                            enemy_found = True
+                                                            return True, [black_checker, checker.row + direction[0],
+                                                                          checker.col + direction[1],
+                                                                          checker]
+                                                            break
+                                    else:
+                                        break  # Выход за границы поля, прерываем цикл
+                                    if enemy_found or other_black_checker_on_path:
+                                        break  # Если вражеская шашка найдена или есть другая черная шашка на пути, прерываем цикл
+                                    current_row, current_col = new_row, new_col  # Переходим к следующей клетке
+                                if enemy_found:
+                                    return True, [black_checker, checker.row, checker.col, checker]
+                        else:
+                            if (white_checker.row - black_checker.row) == -1 and abs(
+                                    white_checker.col - black_checker.col) == 1:
+                                right_empty = None
+                                left_empty = None
+                                if black_checker.row - white_checker.row == 1 and black_checker.col - white_checker.col == 1 and white_checker.row != 1 and 8 and white_checker.col != 1 and 8 and \
+                                        1 <= (white_checker.row - 1) <= 8 and 1 <= (white_checker.col - 1) <= 8:
+                                    left_row = white_checker.row - 1
+                                    left_col = white_checker.col - 1
+                                    left_empty = all((c.row, c.col) != (left_row, left_col) for c in checkers)
+
+                                if (black_checker.row - white_checker.row == 1) and (
+                                        black_checker.col - white_checker.col == -1) and (
+                                        white_checker.row != 1 and 8) and (white_checker.col != 1 and 8) and \
+                                        1 <= (white_checker.row - 1) <= 8 and 1 <= (white_checker.col + 1) <= 8:
+                                    right_row = white_checker.row - 1
+                                    right_col = white_checker.col + 1
+                                    right_empty = all((c.row, c.col) != (right_row, right_col) for c in checkers)
+                                # if left_empty or right_empty and white_checker.row == 1 or 8 and white_checker.col == 1 or 8:
+                                #     return  False
+
+                                if left_empty:
+                                    return left_empty, [black_checker, left_row, left_col, white_checker]
+                                if right_empty:
+
+                                    return right_empty, [black_checker, right_row, right_col, white_checker]
+        return False, None
+
+    def can_move(self, checkers):
+        movable_checkers = []
+        black_checkers = self.black_checker_list()
+
+        for checker in black_checkers:
+            can_move = False
+
+            # Проверка возможности движения для обычных шашек
+            for direction in [(1, -1), (1, 1)]:
+                new_row = checker.row - direction[0]
+                new_col = checker.col + direction[1]
+
+                if 1 <= new_row <= 8 and 1 <= new_col <= 8:
+                    is_empty = True
+                    for other_checker in checkers:
+                        if other_checker.row == new_row and other_checker.col == new_col:
+                            is_empty = False
+                            break
+
+                    if is_empty:
+                        can_move = True
+                        break
+
+            if not checker.black_king:
+                for direction in [(-1, -1), (-1, 1)]:
+                    new_row = checker.row + direction[0]
+                    new_col = checker.col + direction[1]
+
+                    if 1 <= new_row <= 8 and 1 <= new_col <= 8:
+                        is_empty = True
+                        for other_checker in checkers:
+                            if other_checker.row == new_row and other_checker.col == new_col:
+                                is_empty = False
+                                break
+
+                        if is_empty:
+                            can_move = True
+                            break
+
+            if can_move:
+                movable_checkers.append(checker)  # Добавляем обычную шашку
+
+        return movable_checkers
+
+
+    def random_move(self, movable_checkers):
+        if len(movable_checkers) > 0:
+            random_checker = random.choice(movable_checkers)
+
+            if random_checker.black_king == True:
+                king_step = False
+                king_moves = []
+                for direction in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
+                    new_row = random_checker.row + direction[0]
+                    new_col = random_checker.col + direction[1]
+
+                    if 1 <= new_row <= 8 and 1 <= new_col <= 8:
+                        is_empty = all((c.row, c.col) != (new_row, new_col) for c in checkers)
+                        if is_empty:
+                            king_moves.append((new_row, new_col))
+                            king_step = True
+
+                if king_step:
+                    new_row, new_col = random.choice(king_moves)
+                    random_checker.row = new_row
+                    random_checker.col = new_col
+                    return
+
+
+            elif random_checker.black_king != True:
+
+                for i in range(10):  # Попытаемся переместить шашку несколько раз, чтобы избежать зацикливания
+                    direction = random.choice([(1, -1), (1, 1)])  # Выбор направления движения
+                    new_row = random_checker.row - direction[0]
+                    new_col = random_checker.col + direction[1]
+                    if 1 <= new_row <= 8 and 1 <= new_col <= 8:
+                        is_empty = True
+                        for checker in checkers:
+                            if checker.row == new_row and checker.col == new_col:
+                                is_empty = False
+                                break
+                        if is_empty:
+                            # print(new_row,new_col)
+                            # random_checker.move_random(checkers,new_row,new_col)
+                            random_checker.row = new_row
+                            random_checker.col = new_col
+                            if new_row == 1:
+                                a = checkers.index(random_checker)
+                                checkers[a].black_king = True
+                            break
+
+    def move_and_kill(self,new_row,new_col,checker,to_kill):
+        a = checkers.index(checker)
+
+        checkers[a].row = new_row
+        checkers[a].col = new_col
+        checkers.remove(to_kill)
+
+
+    def list(self):
+        list_b = []
+        for enemy_checker in checkers:
+            if enemy_checker.color != self.color:
+                list_b.append(enemy_checker)
+                continue
+        return list_b
+
+
+    def random_move_king(self, checkers):
+        if self.black_king:
+            directions = [(1, -1), (1, 1), (-1, -1), (-1, 1)]  # Все возможные направления для дамки
+
+            king_moves = []  # Список для хранения доступных ходов для всех дамок
+            for checker in checkers:
+                if checker.black_king:
+                    available_directions = []  # Создаем список для доступных направлений для каждой дамки
+                    for direction in directions:
+                        new_row = checker.row + direction[0]
+                        new_col = checker.col + direction[1]
+
+                        if 1 <= new_row <= 8 and 1 <= new_col <= 8:
+                            is_empty_path = True
+                            for other_checker in checkers:
+                                if other_checker.row == new_row and other_checker.col == new_col:
+                                    is_empty_path = False
+                                    break
+
+                            if is_empty_path:
+                                current_row, current_col = checker.row, checker.col
+                                while current_row != new_row and current_col != new_col:
+                                    current_row += direction[0]
+                                    current_col += direction[1]
+                                    for other_checker in checkers:
+                                        if other_checker.row == current_row and other_checker.col == current_col:
+                                            is_empty_path = False
+                                            break
+
+                                if is_empty_path:
+                                    available_directions.append(direction)
+
+                    if available_directions:
+                        for direction in available_directions:
+                            new_row = checker.row + direction[0]
+                            new_col = checker.col + direction[1]
+                            king_moves.append(
+                                (checker, new_row, new_col))  # Добавляем ход в список ходов для всех дамок
+
+            if king_moves:
+                move = random.choice(king_moves)  # Выбираем случайный ход из списка
+                move_checker, new_row, new_col = move
+                move_checker.row = new_row
+                move_checker.col = new_col
+
+    def can_capture_solo(checker, checkers):
+        for direction in [(1, -1), (1, 1)]:
+            new_row = checker.row + direction[0]
+            new_col = checker.col + direction[1]
+            print(1)
+
+            if 1 <= new_row <= 8 and 1 <= new_col <= 8:
+                # Проверяем, есть ли вражеская шашка на пути захвата
+                enemy_row = new_row - direction[0]
+                enemy_col = new_col - direction[1]
+                print(2)
+                enemy_exists = False
+                for enemy_checker in checkers:
+                    if enemy_checker.color != checker.color:
+                        print(3)
+                        if enemy_checker.row == enemy_row:
+                            print(4)
+                            if enemy_checker.col == enemy_col:
+                                enemy_exists = True
+                                print('exists')
+                                break
+
+                if enemy_exists:
+                    # Проверяем, свободно ли место за вражеской шашкой для захвата
+                    capture_row = new_row + direction[0]
+                    capture_col = new_col + direction[1]
+
+                    if 1 <= capture_row <= 8 and 1 <= capture_col <= 8:
+                        is_empty = all(
+                            captured_checker.row != capture_row or captured_checker.col != capture_col for
+                            captured_checker in
+                            checkers)
+                        if is_empty:
+                            return True  # Может сделать захват
+
+        return False  # Захват невозможен, возвращаем False
+
+    def check_game_over(self, checkers,):
+        black_count = sum(1 for checker in checkers if checker.color == 'black')
+        white_count = sum(1 for checker in checkers if checker.color == 'white')
+
+        if black_count == 0:
+            print("White wins! No black checkers left.")
+            return True, 'white'
+        elif white_count == 0:
+            print("Black wins! No white checkers left.")
+            return True, 'black'
+        elif black_count == 1 and white_count > 1:
+            print("White wins! Only one black checker left.")
+            return True, 'white'
+        elif white_count == 1 and black_count > 1:
+            print("Black wins! Only one white checker left.")
+            return True, 'black'
+
+        return False, None  # Игра продолжается
+
+
+    def make_white_king(self):
+        self.king = True
+    def make_black_king(self):
+        self.king = True
+    def deleter(self,del_list):
+        for checker in del_list:
+            if checker in checkers:
+                checkers.remove(checker)
+    def make_king(self):
+        if self.color == 'white' and self.row == 8 and self.white_king != True:
+            self.make_white_king()
+        elif self.color == 'black' and self.row == 1 and self.black_king != True:
+            self.make_black_king()
+
+    def is_valid_diagonal_move(self, new_row, new_col):
+        row_diff = abs(new_row - self.row)
+        col_diff = abs(new_col - self.col)
+        return row_diff == col_diff
+
+
+    def checkers_on_path(selected_checker, target_checker):
+        path = []
+        if selected_checker.row < target_checker.row:
+            if selected_checker.col < target_checker.col:
+                path = [(r, c) for r, c in zip(range(selected_checker.row + 1, target_checker.row),
+                                               range(selected_checker.col + 1, target_checker.col))]
+            elif selected_checker.col > target_checker.col:
+                path = [(r, c) for r, c in zip(range(selected_checker.row + 1, target_checker.row),
+                                               range(target_checker.col + 1, selected_checker.col))]
+        elif selected_checker.row > target_checker.row:
+            if selected_checker.col < target_checker.col:
+                path = [(r, c) for r, c in zip(range(target_checker.row + 1, selected_checker.row),
+                                               range(selected_checker.col + 1, target_checker.col))]
+            elif selected_checker.col > target_checker.col:
+                path = [(r, c) for r, c in zip(range(target_checker.row + 1, selected_checker.row),
+                                               range(target_checker.col + 1, selected_checker.col))]
+        return path
+
+    def move(self, new_row, new_col):
+        for checker in checkers:
+            if new_row != checker.row and new_col != checker.col:
+                if (new_row >=1 and new_row <= 8) and (new_col >= 1 and new_col<=8):
+                    if self.white_king or self.black_king:
+                        listik_1 = [1, 2, 3, 4, 5, 6, 7]
+                        listik_2 = [-1, -2, -3, -4, -5, -6, -7]
+                        a = self.row
+                        b = self.col
+                        if selected_checker.track == 5:
+                            if (new_row - a) in listik_1 and (new_col-b) in listik_1:  # Проверяем, что шашка двигается в правильном направлении
+                                    self.row = new_row
+                                    self.col = new_col
+                                    print('move.5')
+                        elif selected_checker.track == 6:
+                            if (new_row - a) in listik_1 and (new_col-b) in listik_2:  # Проверяем, что шашка двигается в правильном направлении
+                                self.row = new_row
+                                self.col = new_col
+                                print('move.6')
+                        elif selected_checker.track == 7:
+                            if (new_row - a) in listik_2 and (new_col-b) in listik_1:  # Проверяем, что шашка двигается в правильном направлении
+                                self.row = new_row
+                                self.col = new_col
+                                print('move.7')
+                        elif selected_checker.track == 8:
+                            if (new_row - a) in listik_2 and (new_col-b) in listik_2:  # Проверяем, что шашка двигается в правильном направлении
+                                self.row = new_row
+                                self.col = new_col
+                                print('move.8')
+
+
+
+                        else:
+                            self.row = new_row
+                            self.col = new_col
+
+                    else:
+                        if selected_checker.track == 1:
+                            if new_row - self.row == 2 and new_col - self.col == 2:
+                                if (new_row - self.row) * self.direction > 0:  # Проверяем, что шашка двигается в правильном направлении
+                                    self.row = new_row
+                                    self.col = new_col
+                        if selected_checker.track == 2:
+                            if new_row - self.row == 2 and new_col - self.col == -2:
+                                if (new_row - self.row) * self.direction > 0:
+                                    self.row = new_row
+                                    self.col = new_col
+                        if selected_checker.track == 3:
+                            if new_row - self.row == -2 and new_col - self.col == 2:
+                                if (new_row - self.row) * self.direction > 0:
+                                    self.row = new_row
+                                    self.col = new_col
+                        if selected_checker.track == 4:
+                            if new_row - self.row == -2 and new_col - self.col == -2:
+                                if (new_row - self.row) * self.direction > 0:
+                                    self.row = new_row
+                                    self.col = new_col
+
+                        # Проверяем, является ли перемещение наискось
+                        if abs(new_row - self.row) == 1 and abs(new_col - self.col) == 1 and self.white_king != True:
+                            if (new_row - self.row) * self.direction > 0:  # Проверяем, что шашка двигается в правильном направлении
+                                self.row = new_row
+                                self.col = new_col
+                            else:
+                                print("Неверное перемещение. Шашка может двигаться только наискось в правильном направлении.")
+                        else:
+                            pass
+
+
+    def can_capture_checker(selected_checker, all_checkers):
+        for checker in all_checkers:
+            if checker.color == selected_checker.color:
+                for enemy in all_checkers:
+                    if enemy.color != checker.color:
+                        enemy_row = enemy.row
+                        enemy_col = enemy.col
+                        # Проверка, чтобы шашки, находящиеся спереди текущей шашки, не могли ходить
+                        if not (selected_checker.white_king or selected_checker.black_king):
+                            if selected_checker.color == 'white':
+                                if enemy.row < selected_checker.row and enemy_row - selected_checker.row == -1 and abs(
+                                        enemy_col - selected_checker.col) == 1:
+                                    continue
+
+                            if selected_checker.color == 'black':
+                                if enemy.row > selected_checker.row and enemy_row - selected_checker.row == 1 and abs(
+                                        enemy_col - selected_checker.col) == 1:
+                                    continue
+
+                        # Проверка для захвата обычных шашек
+                        if enemy_row - checker.row == 1 and abs(enemy_col - checker.col) == 1:
+                            row_behind_enemy = enemy_row + (enemy_row - checker.row)
+                            col_behind_enemy = enemy_col + (enemy_col - checker.col)
+                            if 1 <= row_behind_enemy <= 8 and 1 <= col_behind_enemy <= 8:
+                                is_occupied = any(
+                                    c.row == row_behind_enemy and c.col == col_behind_enemy for c in all_checkers)
+                                if not is_occupied:
+                                    return True
+
+                # Добавляем условия для дамок
+                for enemy in all_checkers:
+                    if enemy.color != checker.color:
+                        enemy_row = enemy.row
+                        enemy_col = enemy.col
+                        if selected_checker.white_king or selected_checker.black_king:
+                            if selected_checker.track == 5:
+                                if (enemy.row - selected_checker.row) == (enemy.col - selected_checker.col):
+                                    row_behind_enemy = enemy_row + 1
+                                    col_behind_enemy = enemy_col + 1
+                                    if 1 <= row_behind_enemy <= 8 and 1 <= col_behind_enemy <= 8:
+                                        is_occupied = any(
+                                            c.row == row_behind_enemy and c.col == col_behind_enemy for c in
+                                            all_checkers)
+                                        if not is_occupied:
+                                            return True
+                            elif selected_checker.track == 6:
+                                if (enemy.row - selected_checker.row) == -(enemy.col - selected_checker.col):
+                                    row_behind_enemy = enemy_row + 1
+                                    col_behind_enemy = enemy_col - 1
+                                    if 1 <= row_behind_enemy <= 8 and 1 <= col_behind_enemy <= 8:
+                                        is_occupied = any(
+                                            c.row == row_behind_enemy and c.col == col_behind_enemy for c in
+                                            all_checkers)
+                                        if not is_occupied:
+                                            return True
+                            elif selected_checker.track == 7:
+                                if -(enemy.row - selected_checker.row) == (enemy.col - selected_checker.col):
+                                    row_behind_enemy = enemy_row - 1
+                                    col_behind_enemy = enemy_col + 1
+                                    if 1 <= row_behind_enemy <= 8 and 1 <= col_behind_enemy <= 8:
+                                        is_occupied = any(
+                                            c.row == row_behind_enemy and c.col == col_behind_enemy for c in
+                                            all_checkers)
+                                        if not is_occupied:
+                                            return True
+                            elif selected_checker.track == 8:
+                                if (enemy.row - selected_checker.row) == (enemy.col - selected_checker.col):
+                                    row_behind_enemy = enemy_row - 1
+                                    col_behind_enemy = enemy_col - 1
+                                    if 1 <= row_behind_enemy <= 8 and 1 <= col_behind_enemy <= 8:
+                                        is_occupied = any(
+                                            c.row == row_behind_enemy and c.col == col_behind_enemy for c in
+                                            all_checkers)
+                                        if not is_occupied:
+                                            return True
+
+        return False
+
+
+
+
+white_checker_1 = Checkers('white', 1,1)
+white_checker_2 = Checkers('white', 3,1)
+white_checker_3 = Checkers('white', 2,2)
+white_checker_4 = Checkers('white', 1,3)
+white_checker_5 = Checkers('white', 3,3)
+white_checker_6 = Checkers('white', 2,4)
+white_checker_7 = Checkers('white', 1,5)
+white_checker_8 = Checkers('white', 3,5)
+white_checker_9 = Checkers('white', 2,6)
+white_checker_10 = Checkers('white', 1,7)
+white_checker_11 = Checkers('white', 3,7)
+white_checker_12 = Checkers('white', 2,8)
+black_checker_13 = Checkers('black', 7,1)
+black_checker_14 = Checkers('black', 8,2)
+black_checker_15 = Checkers('black', 6,2)
+black_checker_16 = Checkers('black', 7,3)
+black_checker_17 = Checkers('black', 6,4)
+black_checker_18 = Checkers('black', 8,4)
+black_checker_19 = Checkers('black', 7,5)
+black_checker_20 = Checkers('black', 6,6)
+black_checker_21 = Checkers('black', 8,6)
+black_checker_22 = Checkers('black', 7,7)
+black_checker_23 = Checkers('black', 8,8)
+black_checker_24 = Checkers('black', 6,8)
+
+checkers = [white_checker_1,white_checker_2,white_checker_3,
+            white_checker_4,white_checker_5,white_checker_6,
+            white_checker_7,white_checker_8,white_checker_9,white_checker_10,
+            white_checker_11,white_checker_12,black_checker_13,black_checker_14,black_checker_15,black_checker_16,black_checker_17,black_checker_18,
+            black_checker_19,black_checker_20,black_checker_21,black_checker_22,black_checker_23,black_checker_24]
+
+
+
+def draw_checkers():
+    for checker in checkers:
+        size = 80
+        checkercol = checker.col - 1
+        checkerrow = checker.row - 1
+        if checkercol and checkerrow >= 0 or checkercol or checkerrow < 9 :
+            checker_x = 450 + checkercol * 100
+            checker_y = 830 - checkerrow * 100
+            checker_rect = pygame.Rect(checker_x,checker_y,size,size)
+            if checker == selected_checker:
+                pygame.draw.rect(screen, (255, 0, 0), checker_rect, 2)
+            if checker.color == 'white':
+                screen.blit(white_checker_image,checker_rect)
+            else:
+                screen.blit(black_checker_image,checker_rect)
+
+# white_checker1.make_Rect()
+
+#первое - col столбец влево вправо 450
+#второе -  row ряд вверх вниз 830
+
+def make_square_rect(row,col):
+    checkercol = col - 1
+    checkerrow = row - 1
+    checker_x = 434 + checkercol * 100
+    checker_y = 810 - checkerrow * 100
+    return [pygame.Rect(checker_x,checker_y,100,100),[row,col]]
+
+#квадратики
+square_1 = make_square_rect(1,1)
+square_2 = make_square_rect(1,3)
+square_3 = make_square_rect(1,5)
+square_4 = make_square_rect(1,7)
+square_5 = make_square_rect(2,2)
+square_6 = make_square_rect(2,4)
+square_7 = make_square_rect(2,6)
+square_8 = make_square_rect(2,8)
+square_9 = make_square_rect(3,1)
+square_10 = make_square_rect(3,3)
+square_11 = make_square_rect(3,5)
+square_12 = make_square_rect(3,7)
+square_13 = make_square_rect(4,2)
+square_14 = make_square_rect(4,4)
+square_15 = make_square_rect(4,6)
+square_16 = make_square_rect(4,8)
+square_17 = make_square_rect(5,1)
+square_18 = make_square_rect(5,3)
+square_19 = make_square_rect(5,5)
+square_20 = make_square_rect(5,7)
+square_21 = make_square_rect(6,2)
+square_22 = make_square_rect(6,4)
+square_23 = make_square_rect(6,6)
+square_24 = make_square_rect(6,8)
+square_25 = make_square_rect(7,1)
+square_26 = make_square_rect(7,3)
+square_27 = make_square_rect(7,5)
+square_28 = make_square_rect(7,7)
+square_29 = make_square_rect(8,2)
+square_30 = make_square_rect(8,4)
+square_31 = make_square_rect(8,6)
+square_32 = make_square_rect(8,8)
+
+square_list = [square_1,square_2,square_3,square_4,square_5,square_6,square_7,square_8,square_9,square_10,square_11,
+               square_12,square_13,square_14,square_15,square_16,square_17,square_18,square_19,square_20,square_21,
+               square_22,square_23,square_24,square_25,square_26,square_27,square_28,square_29,square_30,square_31,
+               square_32]
+
+
+
+current_punch = None
+enemy_l = []
+king_list = []
+for_del =[]
+selected_target_square = None
+current_player = 'white'
+running = True
+winner = None
+while running:
+    #ГЛАВНЫЙ ЭКРАН ВЫХОД 8X8
+    if current_screen == 'main':
+
+        screen.blit(background_image, (0, 0))
+        pygame.draw.rect(screen, (0, 0, 255), exit_button_rect)
+        screen.blit(exit_button_text, (exit_button_rect.x + 10, exit_button_rect.y + 10))
+
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:  # Левая кнопка мыши
+                    if exit_button_rect.collidepoint(event.pos):
+                        running = False
+                    elif game_button.collidepoint(event.pos): #8x8
+                        current_screen = 'game'
+
+    #ИГРОВОЙ РАБОЧЕЕ ПРОСТРАНСТВО
+    elif current_screen == 'game':
+        screen.blit(game_board_image,(0,0))
+        draw_checkers()
+        valid_move = False
+        pygame.draw.rect(screen, (0, 0, 255), cancel_rect)
+        screen.blit(cancel_text, (cancel_rect.x + 10, cancel_rect.y + 10))
+        for game_event in pygame.event.get():
+            if game_event.type == pygame.QUIT:
+                running = False
+
+            elif running == True:
+                if game_event.type == pygame.MOUSEBUTTONDOWN:                #СНАЧАЛА ROW ПОТОМ COL
+                    if selected_checker is None:
+                        white_checker_queue = 1
+                        black_checker_queue = 1
+                        # Если шашка не выбрана, попробуйте выбрать шашку под курсором
+                        for checker in checkers:
+                            if checker.color == current_player and checker.color == 'white' and current_player == 'white':
+                                size = 70
+                                checkercol = checker.col - 1
+                                checkerrow = checker.row - 1
+                                checker_x = 450 + checkercol * 100
+                                checker_y = 830 - checkerrow * 100
+                                checker_rect = pygame.Rect(checker_x, checker_y, size, size)
+
+                                if checker_rect.collidepoint(game_event.pos):
+                                    selected_checker = checker
+
+                                    break
+                    elif True:
+                        is_blocked_1 = False
+                        is_blocked_2 = False
+                        is_blocked_3 = False
+                        is_blocked_4 = False
+                        is_blocked_5 = False
+                        is_blocked_6 = False
+                        is_blocked_7 = False
+                        is_blocked_8 = False
+                        for enemy in checkers:
+                            if enemy.color != current_player:
+                                size = 70
+                                checker_col = enemy.col - 1
+                                checker_row = enemy.row - 1
+                                checker_x = 450 + checker_col * 100
+                                checker_y = 830 - checker_row * 100
+                                enemy_rect = pygame.Rect(checker_x, checker_y, size, size)
+                                listik_1 = [1, 2, 3, 4, 5, 6, 7]
+                                listik_2 = [-1, -2, -3, -4, -5, -6, -7]
+
+                                if enemy_rect.collidepoint(game_event.pos):
+
+                                    if (enemy.row == 1 or enemy.row == 8) or (enemy.col <= 1 or enemy.col >= 8):
+                                        break
+
+                                    if selected_checker.black_king != True and selected_checker.white_king != True:
+                                        if enemy.color == 'black' and (enemy.row - selected_checker.row == 1 and enemy.col - selected_checker.col == 1):
+                                            for checker in checkers:
+                                                if checker != selected_checker and checker != enemy:
+                                                    if checker.row == enemy.row + 1 and checker.col == enemy.col + 1:
+                                                        is_blocked_1 = True
+                                                        break
+
+                                            if not is_blocked_1:
+                                                selected_checker.track = 1
+                                                if enemy.color != 'white':
+                                                    for_del.append(enemy)
+
+
+                                                break
+
+                                        if enemy.color == 'black' and (enemy.row - selected_checker.row == 1 and enemy.col - selected_checker.col == -1):
+                                            for checker in checkers:
+                                                if checker != selected_checker and checker != enemy:
+                                                    if checker.row == enemy.row + 1 and checker.col == enemy.col - 1:
+                                                        is_blocked_2 = True
+                                                        break
+
+                                            if not is_blocked_2:
+                                                selected_checker.track = 2
+                                                if enemy.color != 'white':
+                                                    for_del.append(enemy)
+
+                                                break
+
+                                        if enemy.color == 'white' and (enemy.row - selected_checker.row == -1 and enemy.col - selected_checker.col == 1):
+                                            for checker in checkers:
+                                                if checker != selected_checker and checker != enemy:
+                                                    if checker.row == enemy.row - 1 and checker.col == enemy.col + 1:
+                                                        is_blocked_3 = True
+                                                        break
+
+                                            if not is_blocked_3:
+                                                selected_checker.track = 3
+                                                if enemy.color != 'black':
+                                                    for_del.append(enemy)
+
+                                                break
+
+                                        if enemy.color == 'white' and (enemy.row - selected_checker.row == -1 and enemy.col - selected_checker.col == -1):
+                                            for checker in checkers:
+                                                if checker != selected_checker and checker != enemy:
+                                                    if checker.row == enemy.row - 1 and checker.col == enemy.col - 1:
+                                                        is_blocked_4 = True
+                                                        break
+
+                                            if not is_blocked_4:
+                                                selected_checker.track = 4
+                                                if enemy.color != 'black':
+                                                    for_del.append(enemy)
+
+                                                break
+                                    elif selected_checker.white_king or selected_checker.black_king:
+                                        # Проверяем, что путь свободен для дамки
+
+                                        path_clear = all(checker not in checkers for checker in selected_checker.checkers_on_path(enemy))
+                                        if selected_checker.row < enemy.row and selected_checker.col < enemy.col:
+                                            for checker in checkers:
+                                                if checker != selected_checker and checker != enemy:
+                                                    if checker.row == enemy.row + 1 and checker.col == enemy.col + 1:
+                                                        is_blocked_5 = True
+                                                        break
+                                            if not is_blocked_5:
+                                                print('block1')
+                                                if path_clear:
+                                                    selected_checker.track = 5
+                                                    print('big sisi life')
+                                                    enemy_l.append(enemy)
+                                                    for_del.append(enemy)
+                                                    break
+                                        elif selected_checker.row < enemy.row and selected_checker.col > enemy.col:
+                                            for checker in checkers:
+                                                if checker != selected_checker and checker != enemy:
+                                                    if checker.row == enemy.row + 1 and checker.col == enemy.col - 1:
+                                                        is_blocked_6 = True
+                                                        break
+                                            if not is_blocked_6:
+                                                if path_clear:
+                                                    selected_checker.track = 6
+                                                    enemy_l.append(enemy)
+                                                    for_del.append(enemy)
+                                                    break
+                                        elif selected_checker.row > enemy.row and selected_checker.col < enemy.col:
+                                            for checker in checkers:
+                                                if checker != selected_checker and checker != enemy:
+                                                    if checker.row == enemy.row - 1 and checker.col == enemy.col + 1:
+                                                        is_blocked_7 = True
+                                                        break
+                                            if not is_blocked_7:
+                                                if path_clear:
+                                                    selected_checker.track = 7
+                                                    enemy_l.append(enemy)
+                                                    for_del.append(enemy)
+                                                    break
+                                        elif selected_checker.row > enemy.row and selected_checker.col > enemy.col:
+                                            for checker in checkers:
+                                                if checker != selected_checker and checker != enemy:
+                                                    if checker.row == enemy.row - 1 and checker.col == enemy.col - 1:
+                                                        is_blocked_8 = True
+                                                        break
+                                            if not is_blocked_8:
+                                                if path_clear:
+                                                    selected_checker.track = 8
+                                                    enemy_l.append(enemy)
+                                                    for_del.append(enemy)
+                                                    break
+
+
+
+
+
+
+                                    break
+
+                        for square in square_list:
+                            count = 0
+                            if selected_checker != None:
+                                if game_event.type == pygame.MOUSEBUTTONDOWN:
+                                    if game_event.button == 1:
+                                        if cancel_rect.collidepoint(game_event.pos):
+                                            selected_checker = None
+                                            selected_target_square = None
+                                            break
+                            # СНАЧАЛА ROW ПОТОМ COL
+                            if square[0].collidepoint(game_event.pos):
+                                if selected_checker.color == current_player and current_player == 'white':
+
+                                    if selected_checker.can_capture_checker(checkers):
+
+                                        if selected_checker.color == 'white' and square[1][0]-selected_checker.row == 1 and square[1][1]-selected_checker.col == 1:
+                                            if selected_checker.track == 1:
+                                                print("solo1", selected_checker.can_capture_solo(checkers))
+                                                selected_checker.move(square[1][0]+1,square[1][1]+1)
+                                                selected_checker.deleter(for_del)
+                                                index = checkers.index(selected_checker)
+                                                if selected_checker.row == 8:
+                                                    if selected_checker.white_king != True:
+                                                        checkers[index].white_king = True
+                                                if checkers[index].can_capture_solo(checkers):
+                                                    print('232332323')
+                                                    checkers[index].in_combat = True
+
+
+                                                selected_checker = None
+
+                                                current_player = 'white' if current_player == 'black' else 'black'
+                                                break
+                                        if selected_checker.color == 'white' and square[1][0] - selected_checker.row == 1 and square[1][1] - selected_checker.col == -1 and selected_checker.white_king != True:
+                                            if selected_checker.track == 2:
+                                                print("solo2", selected_checker.can_capture_solo(checkers))
+                                                selected_checker.move(square[1][0] + 1, square[1][1] - 1)
+                                                selected_checker.deleter(for_del)
+                                                index = checkers.index(selected_checker)
+                                                if selected_checker.row == 8:
+                                                    if selected_checker.white_king != True:
+                                                        checkers[index].white_king = True
+                                                if checkers[index].can_capture_solo(checkers):
+                                                    checkers[index].next_punch = True
+
+                                                selected_checker = None
+
+                                                current_player = 'white' if current_player == 'black' else 'black'
+                                                break
+
+                                        if selected_checker.color == 'black' and square[1][0] - selected_checker.row == -1 and square[1][1] - selected_checker.col == 1 and selected_checker.black_king != True :
+                                            if selected_checker.track == 3:
+                                                selected_checker.move(square[1][0] -1, square[1][1] + 1)
+                                                selected_checker.deleter(for_del)
+                                                if selected_checker.row == 1:
+                                                    if selected_checker.white_king != True:
+                                                        index = checkers.index(selected_checker)
+                                                        checkers[index].white_king = True
+                                                if selected_checker.can_capture_checker(checkers):
+                                                    continue
+                                                else:
+
+                                                    selected_checker = None
+                                                    current_player = 'white' if current_player == 'black' else 'black'
+                                                    break
+                                        if selected_checker.color == 'black' and square[1][0] - selected_checker.row == -1 and square[1][1] - selected_checker.col == -1 and selected_checker.black_king != True:
+                                            if selected_checker.track == 4:
+                                                selected_checker.move(square[1][0] - 1, square[1][1] - 1)
+                                                selected_checker.deleter(for_del)
+                                                if selected_checker.row == 1:
+                                                    if selected_checker.white_king != True:
+                                                        index = checkers.index(selected_checker)
+                                                        checkers[index].white_king = True
+                                                if selected_checker.can_capture_checker(checkers):
+                                                    continue
+                                                else:
+
+                                                    selected_checker = None
+                                                    current_player = 'white' if current_player == 'black' else 'black'
+                                                    break
+                                        elif selected_checker.track == 5:
+                                            if selected_checker.is_valid_diagonal_move(square[1][0], square[1][1]):
+
+                                                selected_checker.move(enemy_l[0].row + 1, enemy_l[0].col + 1)
+                                                selected_checker.deleter(for_del)
+                                                index = checkers.index(selected_checker)
+                                                selected_checker = None
+                                                checkers[index].track = None
+                                                enemy_l.clear()
+                                                current_player = 'white' if current_player == 'black' else 'black'
+
+
+                                                break
+
+                                        elif selected_checker.track == 6:
+                                            if selected_checker.is_valid_diagonal_move(square[1][0], square[1][1]):
+                                                selected_checker.move(enemy_l[0].row + 1, enemy_l[0].col - 1)
+                                                selected_checker.deleter(for_del)
+                                                index = checkers.index(selected_checker)
+                                                selected_checker = None
+                                                checkers[index].track = None
+                                                enemy_l.clear()
+                                                current_player = 'white' if current_player == 'black' else 'black'
+
+                                                break
+                                        elif selected_checker.track == 7:
+                                            if selected_checker.is_valid_diagonal_move(square[1][0], square[1][1]):
+                                                selected_checker.move(enemy_l[0].row - 1, enemy_l[0].col + 1)
+                                                selected_checker.deleter(for_del)
+                                                index = checkers.index(selected_checker)
+                                                selected_checker = None
+                                                checkers[index].track = None
+                                                enemy_l.clear()
+                                                current_player = 'white' if current_player == 'black' else 'black'
+                                                break
+                                        elif selected_checker.track == 8:
+                                            if selected_checker.is_valid_diagonal_move(square[1][0], square[1][1]):
+                                                selected_checker.move(enemy_l[0].row - 1, enemy_l[0].col - 1)
+                                                selected_checker.deleter(for_del)
+                                                index = checkers.index(selected_checker)
+                                                selected_checker = None
+                                                checkers[index].track = None
+                                                enemy_l.clear()
+                                                current_player = 'white' if current_player == 'black' else 'black'
+
+                                                break
+
+                                    if selected_checker.in_combat == True:
+                                        print('next1')
+                                        while selected_checker.next_punch:
+                                            if selected_checker.can_capture_solo(checkers):
+                                                print('hach')
+                                                break
+
+
+
+
+                                    if selected_checker is not None and selected_checker.color == 'white' and selected_checker.row - square[1][0] < 1 and square[1][0] - selected_checker.row < 2 and selected_checker.row != square[1][0] and \
+                                            selected_checker.white_king != True:
+                                        if selected_checker.is_valid_move(square[1][0], square[1][1], checkers):
+                                            selected_checker.move(square[1][0], square[1][1])
+                                            if selected_checker.row == 8:
+                                                if selected_checker.white_king != True:
+                                                    index = checkers.index(selected_checker)
+                                                    checkers[index].white_king = True
+                                            selected_checker = None
+                                            current_player = 'white' if current_player == 'black' else 'black'
+
+                                            break
+                                    if selected_checker is not None and selected_checker.color == 'black' and selected_checker.row - square[1][0] >= 1 and square[1][0] - selected_checker.row > -2:
+                                        if selected_checker.is_valid_move(square[1][0], square[1][1], checkers):
+                                            selected_checker.move(square[1][0], square[1][1])
+                                            if selected_checker.row == 1:
+                                                if selected_checker.white_king != True:
+                                                    index = checkers.index(selected_checker)
+                                                    checkers[index].white_king = True
+                                            selected_checker = None
+                                            current_player = 'white' if current_player == 'black' else 'black'
+                                            break
+                                    if selected_checker is not None and selected_checker.white_king == True or selected_checker.black_king and selected_checker.track == None:
+                                        if selected_checker.is_valid_move(square[1][0], square[1][1], checkers):
+                                            if selected_checker.is_valid_diagonal_move(square[1][0], square[1][1]):
+                                                selected_checker.move(square[1][0], square[1][1])
+                                                selected_checker = None
+                                                current_player = 'white' if current_player == 'black' else 'black'
+                                                break
+
+                        if current_player == 'black':
+                            b = []
+                            black_who_can = None
+                            is_blocked_1 = False
+                            is_blocked_2 = False
+                            for checker in checkers:
+                                game_over, winner = checker.check_game_over(checkers)
+                                if game_over:
+                                    if winner == 'black':
+                                        current_screen = 'win_board_black'
+                                        break
+                                    elif winner == 'white':
+                                        current_screen = 'win_board_white'
+                                        break
+
+                            
+                                if checker.color == 'black':
+                                    movable_checkers = checker.can_any_black_capture(checkers)
+
+
+
+
+
+                                    if checker.black_king == True:
+                                        can_capture, move = checker.can_any_black_capture(checkers)
+                                        if can_capture:
+                                            checker.move_and_kill(move[1], move[2], move[0], move[3])
+                                            current_player = 'white' if current_player == 'black' else 'black'
+                                            can_capture, move = None, None
+                                            for checkerik in checkers:
+                                                if checkerik.color == 'black' and checkerik.row == 1 and checkerik.black_king != True:
+                                                    a = checkers.index(checkerik)
+                                                    checkers[a].black_king = True
+
+
+                                            break
+
+                                        else:
+                                            checker.random_move_king(checkers)
+                                            current_player = 'white' if current_player == 'black' else 'black'
+
+
+                                            break
+
+                                    elif checker.black_king != True:
+                                        can_capture, move = checker.can_any_black_capture(checkers)
+                                        if can_capture:
+
+                                            checker.move_and_kill(move[1],move[2],move[0],move[3])
+                                            current_player = 'white' if current_player == 'black' else 'black'
+                                            can_capture, move = None,None
+                                            for checkerik in checkers:
+                                                if checkerik.color == 'black' and checkerik.row == 1 and checkerik.black_king != True:
+                                                    a = checkers.index(checkerik)
+                                                    checkers[a].black_king = True
+
+
+                                            break
+
+                                        if not(can_capture):
+                                            movable_checkers = checker.can_move(checkers)
+                                            if len(movable_checkers) != 0:
+
+                                                checker.random_move(movable_checkers)
+
+                                                current_player = 'white' if current_player == 'black' else 'black'
+                                                for checkerik in checkers:
+                                                    if checkerik.color == 'black' and checkerik.row == 1 and checkerik.black_king != True:
+                                                        a = checkers.index(checkerik)
+                                                        checkers[a].black_king = True
+
+
+                                                break  # Для перехода к следующей шашке
+
+                                            else:
+
+
+                                                continue
+
+
+
+                            break
+
+
+
+
+
+    elif current_screen == 'win_board_black':
+        screen.blit(black_win, (0, 0))
+        for game_event in pygame.event.get():
+            if game_event.type == pygame.QUIT:
+                running = False
+
+    elif current_screen == 'win_board_white':
+        screen.blit(white_win, (0, 0))
+        for game_event in pygame.event.get():
+            if game_event.type == pygame.QUIT:
+                running = False
+
+
+
+    pygame.display.flip()
+    clock.tick(fps)
+pygame.quit()
